@@ -1,10 +1,10 @@
-module AdventOfCode2022
+module AdventOfCode2023
 import Printf.@sprintf
 
-solved = union(collect(1:15), 20)
+solved = 1:1
 for day ∈ solved
     padded = @sprintf("%02d", day)
     include(joinpath(@__DIR__, "day$padded.jl"))
 end
 
-end # module AdventOfCode2022
+end # module AdventOfCode2023
