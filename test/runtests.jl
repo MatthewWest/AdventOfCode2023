@@ -18,5 +18,5 @@ using Test
     zoneight234
     7pqrstsixteen
     """
-    @test AdventOfCode2022.Day01.part2(test_input_2) == 281
+    @test AdventOfCode2023.Day01.part2(test_input_2) == 281
 end
