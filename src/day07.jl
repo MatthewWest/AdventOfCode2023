@@ -180,10 +180,19 @@ function part2(input = INPUT)
 end
 
 # ╔═╡ 6e27f467-d702-4ab9-b296-53ae06bb4a09
-@benchmark part1()
+part1()
 
 # ╔═╡ a0ec3fbe-74ff-4357-bcd3-ebb8549a5fd7
-@benchmark part2()
+part2()
+
+# ╔═╡ 59425223-528a-4fa4-af5f-db95e432612b
+function solveboth(input)
+	part1(input)
+	part2(input)
+end
+
+# ╔═╡ d22cb6c6-f0bc-464b-b1dd-f67bbd6b11ab
+@benchmark solveboth($INPUT)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -417,5 +426,7 @@ version = "17.4.0+0"
 # ╠═526dd834-38d8-48eb-8602-5c6656c437e1
 # ╠═6e27f467-d702-4ab9-b296-53ae06bb4a09
 # ╠═a0ec3fbe-74ff-4357-bcd3-ebb8549a5fd7
+# ╠═59425223-528a-4fa4-af5f-db95e432612b
+# ╠═d22cb6c6-f0bc-464b-b1dd-f67bbd6b11ab
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
