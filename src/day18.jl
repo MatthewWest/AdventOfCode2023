@@ -225,6 +225,17 @@ function apply(pos, instruction)
 	pos .+ (one(instruction.dir) .* instruction.dist)
 end
 
+# ╔═╡ 8a3a47be-8f3a-4c93-9f1d-9e87d525be58
+md"""
+There are two key insights for this problem. One of them I arrived at by a Google search of how to determine the area inside an arbitrary polygon. The other, I arrived at by browsing the solutions thread on the AoC subreddit (specifically [this comment](https://www.reddit.com/r/adventofcode/comments/18l0qtr/2023_day_18_solutions/kdv385s/), which inspired me to look up Pick's Theorem).
+
+Key insight #1 is that we can determine the area of the polygon formed by the "instructions" by using the Shoelace Method. I came across the Shoelace method while searching the internet for how to find the area of a polygon. Wikipedia has [a helpful article about it](https://en.wikipedia.org/wiki/Shoelace_formula).
+
+Key insight #2 is that Pick's theorem can tell us how many integer-value points are contained within a polygon with integer vertex coordinates, given the area and the number of points on the boundary.
+
+This feels like a gotcha question, where you have to know a specific theorem or fact in order to succeed in solving the puzzle.
+"""
+
 # ╔═╡ 671f5a55-9ef0-4e37-9c3a-5c4ab7de3014
 function polygon_area(path)
 	total = BigInt(0)
@@ -233,7 +244,7 @@ function polygon_area(path)
 		p2 = path[i+1]
 		total += (p1[1] + p2[1]) * (p1[2] - p2[2])
 	end
-	total
+	total / 2
 end
 
 # ╔═╡ d3652283-4ab7-41a2-98b0-e905230a7dad
@@ -245,32 +256,14 @@ function part2(s = INPUT)
 		pos = apply(pos, i)
 		push!(path, pos)
 	end
-	polygon_area(path)
+	b = sum(i -> i.dist, instructions)
+	A = polygon_area(path)
+	i = A - (b / 2) + 1
+	BigInt(b + i)
 end
 
-# ╔═╡ 8a3a47be-8f3a-4c93-9f1d-9e87d525be58
-md"""
-I'm wrapping up for tonight, having gotten part 1 correct and being stuck on part 2.
-
-The approach I've thought about for part 2 is to use the [shoelace formula](https://en.wikipedia.org/wiki/Shoelace_formula). However, the shoelace formula assumes lines of width 0, and therefore does not quite work for this problem.
-"""
-
 # ╔═╡ 4112f8fb-133e-4024-892d-e30b1c0457ca
-part2(TEST_INPUT)
-
-# ╔═╡ a4c5d5ce-864d-4a23-afbc-617b00a5813b
-# By drawing it out, I know that the correct answer for this ought to be 18.
-polygon_area([
-	(0, 0), 
-	(3, 0),
-	(3, -3),
-	(0, -3), 
-	(0, -2), 
-	(-1, -2), 
-	(-1, -1), 
-	(-1, 0), 
-	(0, 0),
-])
+part2()
 
 # ╔═╡ Cell order:
 # ╠═7eee9918-9d64-11ee-3bf8-ab66be6a20d9
@@ -294,8 +287,7 @@ polygon_area([
 # ╠═44a75fce-79a7-48db-819f-ee45a5c0523c
 # ╠═3844171c-1ef6-4706-b753-f7156263f2f4
 # ╠═b6a732cd-96a3-4811-9580-75e4ff9fa704
+# ╟─8a3a47be-8f3a-4c93-9f1d-9e87d525be58
 # ╠═671f5a55-9ef0-4e37-9c3a-5c4ab7de3014
 # ╠═d3652283-4ab7-41a2-98b0-e905230a7dad
-# ╠═8a3a47be-8f3a-4c93-9f1d-9e87d525be58
 # ╠═4112f8fb-133e-4024-892d-e30b1c0457ca
-# ╠═a4c5d5ce-864d-4a23-afbc-617b00a5813b
