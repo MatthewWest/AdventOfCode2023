@@ -203,7 +203,7 @@ function node_color(modules, label)
 end
 
 # ╔═╡ 7e343f9f-e1dd-454c-b71e-69ad0c5c2f77
-function plot_graph(modules::Dict{String, Module}; filename="day20plot.png")
+function plot_graph(modules::Dict{String, Module}; filename=tempname())
 	DAG, moduledict = tograph(modules)
 	labelFromId = Dict([last(p) => first(p) for p in pairs(moduledict)])
 	nodelabel = [labelFromId[i] for i in 1:length(moduledict)]
@@ -212,10 +212,11 @@ function plot_graph(modules::Dict{String, Module}; filename="day20plot.png")
 	draw(
 		PNG(filename, 20cm, 20cm),
 		gplot(DAG, nodelabel=nodelabel, arrowlengthfrac=0.03, nodefillc=nodecolors))
+	return filename
 end
 
 # ╔═╡ e28710cc-9c9d-4742-a431-c246de0098c3
-plot_graph(parse_input(INPUT))
+load(plot_graph(parse_input(INPUT)))
 
 # ╔═╡ b1274ab3-d29f-4ea3-a901-1f39b847ff0f
 md"""
@@ -256,51 +257,27 @@ function get_components(modules)
 	components
 end
 
-# ╔═╡ f1c8f71a-3ef5-42cc-8a9f-21a0979e7c06
-function press_button_triggers_rx!(modules)
-	pulses = [("broadcaster", Low, "button")]
-	triggered_rx = false
-	while !isempty(pulses)
-		dest_label, p, from_label = popfirst!(pulses)
-		if dest_label == "rx"
-			if p == Low
-				triggered_rx = true
-			end
-			continue
-		end
-		successors = sendpulse!(modules[dest_label], p, from_label)
-		push!(pulses, successors...)
+# ╔═╡ 01c57738-2adf-4fa2-bb72-53d2a92efaa7
+function make_subgraphs(s = INPUT)
+	subgraphs = get_components(parse_input(s))
+	filenames = String[]
+	for subgraph in subgraphs
+		name = tempname()
+		plot_graph(subgraph; filename=name)
+		push!(filenames, name)
 	end
-	return triggered_rx
+	filenames
 end
 
-# ╔═╡ ffed4afe-9587-4e64-ae3c-221ddc93a90e
-function part2(s = INPUT)
-	subgraphs = get_components(parse_input(INPUT))
-	presses_to_rx = [0 for _ in 1:length(subgraphs)]
-	for (i, subgraph) in enumerate(subgraphs)
-		plot_graph(subgraph; filename="day20plot_subgraph$i.png")
-		for j in Iterators.countfrom(1)
-			if press_button_triggers_rx!(subgraph)
-				presses_to_rx[i] = j
-				break
-			end
-		end
-	end
-	lcm(presses_to_rx...)
-end
+# ╔═╡ 6de3452c-90b1-4f20-833e-8b0e26611b86
+subgraph_png_names = make_subgraphs();
 
-# ╔═╡ ff1072fa-0408-4b1b-8cb1-a3d1481feb0a
-part2()
-
-# ╔═╡ 1660181b-01a3-49cf-a18b-f5e699e62406
-subgraphs = [load("day20plot_subgraph$i.png") for i in 1:4];
+# ╔═╡ 1614288b-64fe-485f-a6f9-14390e6ee956
+subgraphs = [load(subgraph_png_names[i]) for i in 1:4];
 
 # ╔═╡ c2d03d7f-bbd3-4622-877c-5ed737d0f40f
 md"""
 By inspecting the subgraph plots, we can see that each subgraph is a binary counter with 12 nodes. The differences between the subgraphs are which nodes are connected to the "conjugation" node.
-
-The binary counter with 12 nodes has a maximum 
 
 ## SubGraph 1:
 
@@ -360,7 +337,7 @@ This results in a cycle of length 4093.
 
 # ╔═╡ be51585b-b800-491b-af02-5e71ca6dcd0f
 md"""
-## Cycle 3:
+## Subgraph 3:
 
 $(subgraphs[3])
 
@@ -388,7 +365,7 @@ This results in a cycle of length 4091.
 
 # ╔═╡ 4d40b2bc-79a3-40cf-a61e-2d9412f37602
 md"""
-## Cycle 4:
+## Subgraph 4:
 
 $(subgraphs[4])
 
@@ -415,6 +392,42 @@ That results in the counter being reset to 0.
 
 This results in a cycle of length 3733.
 """
+
+# ╔═╡ f1c8f71a-3ef5-42cc-8a9f-21a0979e7c06
+function press_button_triggers_rx!(modules)
+	pulses = [("broadcaster", Low, "button")]
+	triggered_rx = false
+	while !isempty(pulses)
+		dest_label, p, from_label = popfirst!(pulses)
+		if dest_label == "rx"
+			if p == Low
+				triggered_rx = true
+			end
+			continue
+		end
+		successors = sendpulse!(modules[dest_label], p, from_label)
+		push!(pulses, successors...)
+	end
+	return triggered_rx
+end
+
+# ╔═╡ ffed4afe-9587-4e64-ae3c-221ddc93a90e
+function part2(s = INPUT)
+	subgraphs = get_components(parse_input(INPUT))
+	presses_to_rx = Int[]
+	for (i, subgraph) in enumerate(subgraphs)
+		for j in Iterators.countfrom(1)
+			if press_button_triggers_rx!(subgraph)
+				push!(presses_to_rx, j)
+				break
+			end
+		end
+	end
+	lcm(presses_to_rx...)
+end
+
+# ╔═╡ ff1072fa-0408-4b1b-8cb1-a3d1481feb0a
+part2()
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1748,14 +1761,16 @@ version = "17.4.0+0"
 # ╠═e28710cc-9c9d-4742-a431-c246de0098c3
 # ╟─b1274ab3-d29f-4ea3-a901-1f39b847ff0f
 # ╠═a0233915-31a1-48aa-9b4f-016f9d6d8c94
-# ╠═f1c8f71a-3ef5-42cc-8a9f-21a0979e7c06
-# ╠═ffed4afe-9587-4e64-ae3c-221ddc93a90e
-# ╠═ff1072fa-0408-4b1b-8cb1-a3d1481feb0a
+# ╠═01c57738-2adf-4fa2-bb72-53d2a92efaa7
+# ╠═6de3452c-90b1-4f20-833e-8b0e26611b86
 # ╠═1a287c23-883a-4582-a5f8-add3580bd342
-# ╠═1660181b-01a3-49cf-a18b-f5e699e62406
+# ╠═1614288b-64fe-485f-a6f9-14390e6ee956
 # ╟─c2d03d7f-bbd3-4622-877c-5ed737d0f40f
 # ╟─728ac115-d4eb-4fb4-9c47-df5b358af094
 # ╟─be51585b-b800-491b-af02-5e71ca6dcd0f
 # ╟─4d40b2bc-79a3-40cf-a61e-2d9412f37602
+# ╠═f1c8f71a-3ef5-42cc-8a9f-21a0979e7c06
+# ╠═ffed4afe-9587-4e64-ae3c-221ddc93a90e
+# ╠═ff1072fa-0408-4b1b-8cb1-a3d1481feb0a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
