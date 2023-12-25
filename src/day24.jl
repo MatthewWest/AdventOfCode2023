@@ -7,20 +7,11 @@ using InteractiveUtils
 # ╔═╡ 8650fd09-815a-4893-84b7-c3b707c5daec
 using Combinatorics
 
-# ╔═╡ 4df6f95d-18fa-4070-a333-ab363aa19b9f
-using JuMP, Ipopt
+# ╔═╡ 0a06363b-92d9-4642-9557-a9d532d7fc82
+using JuMP, MadNLP
 
 # ╔═╡ a166e6b2-a2a0-11ee-02e8-b39a047056c4
 INPUT = read(joinpath(@__DIR__, "../data/day24.txt"), String);
-
-# ╔═╡ e014386c-a155-49c7-b37a-eb5adb05a067
-TEST_INPUT = """
-19, 13, 30 @ -2,  1, -2
-18, 19, 22 @ -1, -1, -2
-20, 25, 34 @ -2, -2, -4
-12, 31, 28 @ -1, -2, -1
-20, 19, 15 @  1, -5, -3
-""";
 
 # ╔═╡ 087489a9-fa66-444f-9108-2d4c9f699bec
 struct Hail
@@ -124,10 +115,37 @@ end
 # ╔═╡ 1897b877-bc3c-4a0e-a51a-530fb161df49
 part1()
 
+# ╔═╡ d38a20d0-b2fd-4618-9dca-b18836741a3d
+md"""
+Take 3 hailstones: $a$, $b$, $c$. $a$ has starting position $B_a = <x_{a0}, y_{a0}, z_{a0}>$ and velocity $V_a = <vx_a, vy_a, vz_a>$.
+
+We are trying to find 6 unknowns: $x$, $y$, and $z$ of the rock's starting position. Let $B = <x, y, z>$. $vx$, $vy$, and $vz$ of the rock's velocity vector, let $V = <vx, vy, vz>$. We can define 3 positions at which each of $a$, $b$, and $c$ intersect our rock: $p_a$, $p_b$, and $p_c$. Let $t_a$ be the number of steps it takes for the intersection to happen.
+
+$p_a = B_a + V_at_a$
+$p_b = B_b + V_bt_b$
+$p_c = B_c + V_ct_c$
+
+By the way we've defined our hailstones, we assert that at $t_a$, our rock will intersect $p_a$, and so on. Therefore these equations become:
+
+$B + Vt_a = B_a + V_at_a$
+$B + Vt_b = B_b + V_bt_b$
+$B + Vt_c = B_c + V_ct_c$
+
+We can simplify these to:
+
+$(V-V_a)t_a = B_a - B$
+$(V-V_b)t_b = B_b - B$
+$(V-V_c)t_c = B_c - B$
+
+Note that each hailstone we add to our calculation introduces 3 equations but also introduces another unknown variable, so we need 3 points to solve this system of equations.
+
+This is a nonlinear system of equations, so is nontrivial to solve. We'll use the JuMP computer algebra system, with the MadNLP nonlinear solver.
+"""
+
 # ╔═╡ 3ed87514-fac0-4570-ab91-2242a7566c1d
 function part2(s = INPUT)
 	hails = parse_input(s);
-	model = Model(Ipopt.Optimizer)
+	model = Model(MadNLP.Optimizer)
 	
 	@variable(model, x)
 	@variable(model, y)
@@ -151,7 +169,6 @@ function part2(s = INPUT)
 	@constraint(model, (vy - hails[3].vel[2])*tc == hails[3].pos[2] - y)
 	@constraint(model, (vz - hails[3].vel[3])*tc == hails[3].pos[3] - z)
 
-	@objective(model, Min, 1.0)
 	optimize!(model)
 	(value(x), value(y), value(z)) .|> floor .|> Int |> sum
 end
@@ -159,68 +176,17 @@ end
 # ╔═╡ 933924d3-148b-400d-8233-b1b5ab86b502
 part2()
 
-# ╔═╡ d38a20d0-b2fd-4618-9dca-b18836741a3d
-md"""
-Take 3 hailstones: $a$, $b$, $c$. $a$ has starting position $B_a = <x_{a0}, y_{a0}, z_{a0}>$ and velocity $V_a = <vx_a, vy_a, vz_a>$.
-
-We are trying to find 6 unknowns: $x$, $y$, and $z$ of the rock's starting position. Let $B = <x, y, z>$. $vx$, $vy$, and $vz$ of the rock's velocity vector, let $V = <vx, vy, vz>$. We can define 3 positions at which each of $a$, $b$, and $c$ intersect our rock: $p_a$, $p_b$, and $p_c$. Let $t_a$ be the number of steps it takes for the intersection to happen.
-
-$p_a = B_a + V_at_a$
-$p_b = B_b + V_bt_b$
-$p_c = B_c + V_ct_c$
-
-By the way we've defined our hailstones, we assert that at $t_a$, our rock will intersect $p_a$, and so on. Therefore these equations become:
-
-$B + Vt_a = B_a + V_at_a$
-$B + Vt_b = B_b + V_bt_b$
-$B + Vt_c = B_c + V_ct_c$
-
-We can simplify these to:
-
-$(V-V_a)t_a = B_a - B$
-$(V-V_b)t_b = B_b - B$
-$(V-V_c)t_c = B_c - B$
-"""
-
-# ╔═╡ f4f997a7-bef8-459f-868d-494cf3c64ce8
-md"""
-We'll use the following undefined variables:
-
-$<x, y, z>$
-the starting point of the rock throw.
-
-$<vx, vy, vz>$
-the starting velocity of the rock throw.
-
-$<t_a, t_b, t_c>$
-the times when each hailstone intersects with the rock throw.
-
-Each hailstone we use adds 3 equations, and adds 1 unknown variable, on net handling 2 unknowns. To solve a system of equations with $n$ unknowns, we need $n$ equations. We have 6 unknowns to start with, so we can use 3 hailstones to solve it.
-
-We'll need to solve for 0s, so let's rearrange the equations:
-
-$(V_x-V_{ax})t_a - B_{ax} + B_x = 0$
-$(V_y-V_{ay})t_a - B_{ay} + B_y = 0$
-$(V_z-V_{az})t_a - B_{az} + B_z = 0$
-$(V_x-V_{bx})t_b - B_{bx} + B_x = 0$
-$(V_y-V_{by})t_b - B_{by} + B_y = 0$
-$(V_z-V_{bz})t_b - B_{bz} + B_z = 0$
-$(V_x-V_{cx})t_c - B_{cx} + B_x = 0$
-$(V_y-V_{cy})t_c - B_{cy} + B_y = 0$
-$(V_z-V_{cz})t_c - B_{cz} + B_z = 0$
-"""
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
-Ipopt = "b6b21f68-93f8-5de0-b562-5493be1d77c9"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+MadNLP = "2621e9c9-9eb4-46b1-8089-e8c72242dfb6"
 
 [compat]
 Combinatorics = "~1.0.2"
-Ipopt = "~1.5.1"
 JuMP = "~1.17.0"
+MadNLP = "~0.7.0"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -229,13 +195,13 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "8891090cd28bc98f2934bfd4bbcd1a344b5b1766"
+project_hash = "5bccc76cd5a968a5c753cec1768bf774b8a04bb8"
 
-[[deps.ASL_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "6252039f98492252f9e47c312c8ffda0e3b9e78d"
-uuid = "ae81ac8f-d209-56e5-92de-9978fef736f9"
-version = "0.1.3+0"
+[[deps.AMD]]
+deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse_jll"]
+git-tree-sha1 = "45a1272e3f809d36431e57ab22703c6896b8908f"
+uuid = "14f7f29c-3bd6-536c-9a0b-7339e30b5a3e"
+version = "0.5.3"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -330,6 +296,16 @@ deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
 
+[[deps.ExprTools]]
+git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
+uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
+version = "0.1.10"
+
+[[deps.FastClosures]]
+git-tree-sha1 = "acebe244d53ee1b461970f8910c235b259e772ef"
+uuid = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
+version = "0.3.2"
+
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
@@ -345,27 +321,9 @@ version = "0.10.36"
     [deps.ForwardDiff.weakdeps]
     StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
-[[deps.Hwloc_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "8ecb0b34472a3c98f945e3c75fc7d5428d165511"
-uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
-version = "2.9.3+0"
-
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-
-[[deps.Ipopt]]
-deps = ["Ipopt_jll", "LinearAlgebra", "MathOptInterface", "OpenBLAS32_jll", "PrecompileTools"]
-git-tree-sha1 = "481caf9195288ec5a1968582a8bc14735575ef81"
-uuid = "b6b21f68-93f8-5de0-b562-5493be1d77c9"
-version = "1.5.1"
-
-[[deps.Ipopt_jll]]
-deps = ["ASL_jll", "Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "MUMPS_seq_jll", "SPRAL_jll", "libblastrampoline_jll"]
-git-tree-sha1 = "f06a7fd68e29c8acc96483d6f163dab58626c4b5"
-uuid = "9cc047cb-c261-5740-88fc-0cf96f7bdcc7"
-version = "300.1400.1302+0"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
@@ -396,6 +354,12 @@ version = "1.17.0"
     [deps.JuMP.weakdeps]
     DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 
+[[deps.LDLFactorizations]]
+deps = ["AMD", "LinearAlgebra", "SparseArrays", "Test"]
+git-tree-sha1 = "70f582b446a1c3ad82cf87e62b878668beef9d13"
+uuid = "40e66cde-538c-5869-a4ad-c39174c6795b"
+version = "0.10.1"
+
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
@@ -422,6 +386,12 @@ uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
+[[deps.LinearOperators]]
+deps = ["FastClosures", "LDLFactorizations", "LinearAlgebra", "Printf", "SparseArrays", "TimerOutputs"]
+git-tree-sha1 = "a58ab1d18efa0bcf9f0868c6d387e4126dad3e72"
+uuid = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
+version = "2.5.2"
+
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
 git-tree-sha1 = "7d6dd4e9212aebaeed356de34ccf262a3cd415aa"
@@ -441,23 +411,17 @@ version = "0.3.26"
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
-[[deps.METIS_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "1fd0a97409e418b78c53fac671cf4622efdf0f21"
-uuid = "d00139f3-1899-568f-a2f0-47f597d42d70"
-version = "5.1.2+0"
-
-[[deps.MUMPS_seq_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "METIS_jll", "libblastrampoline_jll"]
-git-tree-sha1 = "24dd34802044008ef9a596de32d63f3c9ddb7802"
-uuid = "d7ed1dd3-d0ae-5e8e-bfb4-87a502085b8d"
-version = "500.600.100+0"
-
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
 git-tree-sha1 = "9ee1618cbf5240e6d4e0371d6f24065083f60c48"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 version = "0.5.11"
+
+[[deps.MadNLP]]
+deps = ["Libdl", "LinearAlgebra", "Logging", "MathOptInterface", "NLPModels", "Pkg", "Printf", "SolverCore", "SparseArrays", "SuiteSparse"]
+git-tree-sha1 = "65d1edba975973dfe3d08f06dde3b95847f8f233"
+uuid = "2621e9c9-9eb4-46b1-8089-e8c72242dfb6"
+version = "0.7.0"
 
 [[deps.Markdown]]
 deps = ["Base64"]
@@ -487,6 +451,12 @@ git-tree-sha1 = "806eea990fb41f9b36f1253e5697aa645bf6a9f8"
 uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
 version = "1.4.0"
 
+[[deps.NLPModels]]
+deps = ["FastClosures", "LinearAlgebra", "LinearOperators", "Printf", "SparseArrays"]
+git-tree-sha1 = "51b458add76a938917772ee661ffb9d59b4c7e5d"
+uuid = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
+version = "0.20.0"
+
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
 git-tree-sha1 = "0877504529a3e5c3343c6f8b4c0381e57e4387e4"
@@ -496,12 +466,6 @@ version = "1.0.2"
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
-
-[[deps.OpenBLAS32_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "2fb9ee2dc14d555a6df2a714b86b7125178344c2"
-uuid = "656ef2d0-ae68-5445-9ca0-591084a874a2"
-version = "0.3.21+0"
 
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
@@ -567,12 +531,6 @@ uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
 
-[[deps.SPRAL_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "Libdl", "METIS_jll", "libblastrampoline_jll"]
-git-tree-sha1 = "d1ca34081034a9c6903cfbe068a952a739c2aa5c"
-uuid = "319450e9-13b8-58e8-aa9f-8fd1420848ab"
-version = "2023.8.2+0"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -584,6 +542,12 @@ version = "1.0.3"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+
+[[deps.SolverCore]]
+deps = ["LinearAlgebra", "NLPModels", "Printf"]
+git-tree-sha1 = "9fb0712d597d6598857ae50b7744df17b1137b38"
+uuid = "ff4d7338-4cf1-434d-91df-b86cb86fb843"
+version = "0.3.7"
 
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
@@ -611,6 +575,10 @@ deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 version = "1.9.0"
 
+[[deps.SuiteSparse]]
+deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
+uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
+
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
@@ -629,6 +597,12 @@ version = "1.10.0"
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[[deps.TimerOutputs]]
+deps = ["ExprTools", "Printf"]
+git-tree-sha1 = "f548a9e9c490030e545f72074a41edfd0e5bcdd7"
+uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+version = "0.5.23"
 
 [[deps.TranscodingStreams]]
 git-tree-sha1 = "1fbeaaca45801b4ba17c251dd8603ef24801dd84"
@@ -669,7 +643,6 @@ version = "17.4.0+0"
 
 # ╔═╡ Cell order:
 # ╠═a166e6b2-a2a0-11ee-02e8-b39a047056c4
-# ╠═e014386c-a155-49c7-b37a-eb5adb05a067
 # ╠═8650fd09-815a-4893-84b7-c3b707c5daec
 # ╠═087489a9-fa66-444f-9108-2d4c9f699bec
 # ╠═37fefe81-bb24-440d-8734-ac7f81b9871b
@@ -678,10 +651,9 @@ version = "17.4.0+0"
 # ╠═32985d6a-38fe-4698-8169-0c1ef2ddaa61
 # ╠═bd11a595-db52-4784-856d-95380c90521d
 # ╠═1897b877-bc3c-4a0e-a51a-530fb161df49
+# ╟─d38a20d0-b2fd-4618-9dca-b18836741a3d
+# ╠═0a06363b-92d9-4642-9557-a9d532d7fc82
 # ╠═3ed87514-fac0-4570-ab91-2242a7566c1d
 # ╠═933924d3-148b-400d-8233-b1b5ab86b502
-# ╟─d38a20d0-b2fd-4618-9dca-b18836741a3d
-# ╟─f4f997a7-bef8-459f-868d-494cf3c64ce8
-# ╠═4df6f95d-18fa-4070-a333-ab363aa19b9f
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
